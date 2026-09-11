@@ -1,0 +1,3 @@
+import test from 'node:test';import assert from 'node:assert/strict';import { parseBuyerCsv } from '../app/csv.js';
+test('imports Spanish CSV headers',()=>{const csv='nombre,email,presupuesto_max,zonas,tipo,dormitorios,extras,estado\nAnna,anna@example.com,5000000,Marbella;Benahavís,Villa,4,Sea view;Pool,active';const result=parseBuyerCsv(csv);assert.equal(result.errors.length,0);assert.equal(result.buyers.length,1);assert.equal(result.buyers[0].name,'Anna');assert.deepEqual(result.buyers[0].desiredLocations,['Marbella','Benahavís']);assert.equal(result.buyers[0].maxBudget,5000000);});
+test('reports missing names',()=>{const result=parseBuyerCsv('email,presupuesto_max\na@example.com,3000000');assert.equal(result.buyers.length,0);assert.equal(result.errors.length,1);});

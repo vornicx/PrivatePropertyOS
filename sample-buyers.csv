@@ -1,0 +1,3 @@
+nombre,email,presupuesto_min,presupuesto_max,zonas,tipo,dormitorios,extras,estado,plazo
+Anna Example,anna@example.com,3000000,5000000,Marbella;Benahavís,Villa,4,Sea view;Pool,active,3-6 months
+David Example,david@example.com,8000000,15000000,La Zagaleta;Benahavís,Estate;Villa,6,Spa;Staff quarters;Gated community,qualified,Immediate
