@@ -5,6 +5,9 @@ const includesLoose = (haystack, needle) => {
   return Boolean(a && b && (a.includes(b) || b.includes(a)));
 };
 
+export const ACTIONABLE_MATCH_MIN_SCORE = 70;
+export const ACTIONABLE_MATCH_LIMIT = 15;
+
 function budgetReason(buyer, property) {
   if (!property.price || (!buyer.minBudget && !buyer.maxBudget)) return null;
   const min = buyer.minBudget ?? 0;
@@ -53,8 +56,52 @@ export function matchBuyerToProperty(buyer, property) {
   return { buyer, property, score, reasons, hardMismatch };
 }
 
+const statusPriority = (status) => ({ active:3, qualified:2, lead:1, paused:0 }[status] ?? 0);
+
 export function rankBuyersForProperty(property,buyers) {
-  return buyers.filter((buyer)=>!['lost','won'].includes(buyer.status)).map((buyer)=>matchBuyerToProperty(buyer,property)).sort((a,b)=>b.score-a.score || Number(a.hardMismatch)-Number(b.hardMismatch));
+  return buyers
+    .filter((buyer)=>!['lost','won'].includes(buyer.status))
+    .map((buyer)=>matchBuyerToProperty(buyer,property))
+    .sort((a,b)=>b.score-a.score || Number(a.hardMismatch)-Number(b.hardMismatch) || statusPriority(b.buyer.status)-statusPriority(a.buyer.status));
+}
+
+export function getContactQueue(property, buyers, actions = [], options = {}) {
+  const minScore = options.minScore ?? ACTIONABLE_MATCH_MIN_SCORE;
+  const limit = options.limit ?? ACTIONABLE_MATCH_LIMIT;
+  const resolved = new Set(['contacted','interested','not_interested']);
+  const actionByBuyer = new Map(
+    actions
+      .filter((action)=>action.propertyId===property.id)
+      .map((action)=>[action.buyerId, action]),
+  );
+
+  return rankBuyersForProperty(property,buyers)
+    .filter((match)=>match.score>=minScore)
+    .filter((match)=>!match.hardMismatch)
+    .filter((match)=>!['paused','lost','won'].includes(match.buyer.status))
+    .filter((match)=>!resolved.has(actionByBuyer.get(match.buyer.id)?.status))
+    .slice(0,limit);
+}
+
+export function getOpportunitySummary(property, buyers, actions = []) {
+  const ranked = rankBuyersForProperty(property,buyers);
+  const propertyActions = actions.filter((action)=>action.propertyId===property.id);
+  const processedBuyerIds = new Set(
+    propertyActions
+      .filter((action)=>['contacted','interested','not_interested'].includes(action.status))
+      .map((action)=>action.buyerId),
+  );
+  const paused = ranked.filter((match)=>match.buyer.status==='paused').length;
+  const weakOrInvalid = ranked.filter((match)=>match.score<ACTIONABLE_MATCH_MIN_SCORE || match.hardMismatch).length;
+  const queue = getContactQueue(property,buyers,actions);
+
+  return {
+    analyzed: ranked.length,
+    queueCount: queue.length,
+    processed: processedBuyerIds.size,
+    paused,
+    automaticallyDiscarded: weakOrInvalid + paused,
+  };
 }
 
 export function matchLabel(score) { if(score>=85)return'Muy alto'; if(score>=70)return'Alto'; if(score>=55)return'Medio'; return'Bajo'; }
