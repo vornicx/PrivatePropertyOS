@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { demoBuyers, demoProperties } from '../app/demo.js';
-import { getContactQueue, getOpportunitySummary, matchBuyerToProperty, rankBuyersForProperty } from '../app/matching.js';
+import { getContactQueue, getOpportunitySummary, matchBuyerToProperty, rankBuyersForProperty, rankPropertiesByOpportunity } from '../app/matching.js';
 
 test('Lindqvist is a strong match for Villa Aurelia',()=>{const m=matchBuyerToProperty(demoBuyers[0],demoProperties[0]);assert.ok(m.score>=85);assert.equal(m.hardMismatch,false);});
 test('Reinhardt ranks first for Villa Monteverde',()=>{const ranked=rankBuyersForProperty(demoProperties[2],demoBuyers);assert.equal(ranked[0].buyer.id,'b3');assert.ok(ranked[0].score>=85);});
@@ -14,3 +14,5 @@ test('contact queue is capped even with a large buyer database',()=>{const templ
 test('opportunity summary counts processed buyers separately',()=>{const property=demoProperties[0];const queue=getContactQueue(property,demoBuyers);const action={propertyId:property.id,buyerId:queue[0].buyer.id,status:'interested'};const summary=getOpportunitySummary(property,demoBuyers,[action]);assert.equal(summary.processed,1);assert.ok(summary.analyzed>=summary.queueCount);});
 
 test('opportunity summary categories never exceed analyzed buyers',()=>{const property=demoProperties[5];const summary=getOpportunitySummary(property,demoBuyers);assert.ok(summary.queueCount+summary.overflow+summary.processed+summary.automaticallyDiscarded<=summary.analyzed);});
+
+test('portfolio ranking puts properties with actionable buyers first',()=>{const ranked=rankPropertiesByOpportunity(demoProperties,demoBuyers);assert.ok(ranked.length>0);for(let i=1;i<ranked.length;i++){assert.ok(ranked[i-1].summary.queueCount>=ranked[i].summary.queueCount || ranked[i-1].topScore>=ranked[i].topScore);}});

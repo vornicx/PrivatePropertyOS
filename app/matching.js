@@ -114,4 +114,15 @@ export function getOpportunitySummary(property, buyers, actions = []) {
   };
 }
 
+export function rankPropertiesByOpportunity(properties, buyers, actions = []) {
+  return properties
+    .filter((property)=>property.status!=='sold')
+    .map((property)=>{
+      const queue = getContactQueue(property,buyers,actions);
+      const summary = getOpportunitySummary(property,buyers,actions);
+      return { property, queue, summary, topScore: queue[0]?.score ?? 0 };
+    })
+    .sort((a,b)=>b.summary.queueCount-a.summary.queueCount || b.topScore-a.topScore || String(b.property.createdAt??'').localeCompare(String(a.property.createdAt??'')));
+}
+
 export function matchLabel(score) { if(score>=85)return'Muy alto'; if(score>=70)return'Alto'; if(score>=55)return'Medio'; return'Bajo'; }
