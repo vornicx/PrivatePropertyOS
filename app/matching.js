@@ -91,16 +91,26 @@ export function getOpportunitySummary(property, buyers, actions = []) {
       .filter((action)=>['contacted','interested','not_interested'].includes(action.status))
       .map((action)=>action.buyerId),
   );
-  const paused = ranked.filter((match)=>match.buyer.status==='paused').length;
-  const weakOrInvalid = ranked.filter((match)=>match.score<ACTIONABLE_MATCH_MIN_SCORE || match.hardMismatch).length;
-  const queue = getContactQueue(property,buyers,actions);
+  const unprocessed = ranked.filter((match)=>!processedBuyerIds.has(match.buyer.id));
+  const actionable = unprocessed.filter((match)=>
+    match.score>=ACTIONABLE_MATCH_MIN_SCORE &&
+    !match.hardMismatch &&
+    !['paused','lost','won'].includes(match.buyer.status),
+  );
+  const queue = actionable.slice(0,ACTIONABLE_MATCH_LIMIT);
+  const automaticallyDiscarded = unprocessed.filter((match)=>
+    match.buyer.status==='paused' ||
+    match.score<ACTIONABLE_MATCH_MIN_SCORE ||
+    match.hardMismatch,
+  ).length;
 
   return {
     analyzed: ranked.length,
+    actionableTotal: actionable.length,
     queueCount: queue.length,
+    overflow: Math.max(0, actionable.length-queue.length),
     processed: processedBuyerIds.size,
-    paused,
-    automaticallyDiscarded: weakOrInvalid + paused,
+    automaticallyDiscarded,
   };
 }
 
